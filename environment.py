@@ -1,4 +1,4 @@
-
+import utilis
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -12,7 +12,6 @@ class AegisNepEnv(gym.Env):
         high = np.array ([1.0,1.0,1.0]),
         dtype = np.float32
      )
-
      # Room1: 14-D Telemetry Output
      self.observation_space = spaces.Box(
         low =-np.inf,
@@ -20,13 +19,12 @@ class AegisNepEnv(gym.Env):
         shape = (14,),
         dtype = np.float32
      )
-
     #Time_Step from Geo Orbit to Mars Interception
      self.current_steps = 0
      self.max_steps = 200
 
    #Room 2
-    def reset(self, seed =None , options=None):
+    def reset(self, seed=None, options=None):
       super().reset(seed = seed)
 
        #Reset internal time tracking clock back to Day 0.
@@ -42,8 +40,7 @@ class AegisNepEnv(gym.Env):
       observation[4] = 29780.0 #SpaceCraft Velocity VY (approx.. earth's orbital speed in m/s)
       observation[5] = 0.0 #SpaceCraft Veloctiy VZ
       observation[6] = 12000.0 #Initial SpaceCraft Launch Wet Mass (Kg)
-      observation[7] = 3500.0 # Full Starting Ion Grid Operational Potential (Volts)
-      
+      observation[7] = 600.0 # NASA Hall-Effect spec
    #Storage PipeLine
       info = {}
       return observation, info
@@ -51,7 +48,6 @@ class AegisNepEnv(gym.Env):
    #Room 3: Engine Loop- Executes in every single simulation day,,
 
     def step(self, action):
-
       #Advance the clock by day 1 steps
       self.current_steps += 1
 
@@ -60,19 +56,39 @@ class AegisNepEnv(gym.Env):
       azimuth = action[1] #Range [-1.0 , 1.0]
       elevation = action[2] # Range [-1.0, 1.0]
 
-      #[1A, Placehodler] 
-      observation = np.zeros(14, dtype=np.float32)
+      #Pull Current 6d State [Position, Velocities] out of internal state array
+      #For now slicing the first 6 elements of observation tracking matrix
+      current_state_6d = self.state[:6]
 
-      #Reward tracking
+      #Defining active Hall-Effect thruster forces 
+      thrust_vector = np.array([throttle, azimuth, elevation], dtype=np.float32)
+      #Calling Rk 4 solver from utilis to slide space cooridnates forward 1 Day
+      #dt_seconds = 86400.00 (total sec in exactly 1.0 Earth Day Steps)
+      next_6d_state = utilis.rk4_step(
+        state_6d=current_state_6d,
+        r_earth=np.zeros(3,dtype=np.float32),  # Earth Moving Baseline
+        r_mars=np.zeros(3, dtype=np.float32),  # Mars Moving Target
+        thrust_vector=thrust_vector,
+        mass= 12000.0,
+        dt_seconds=86400.0)
+       
+
+      #Updating Physics coordinates straight back into observation array
+      observation = np.zeros(14,dtype = np.float32)
+      observation[:6] = next_6d_state
+      observation[6] = 12000 # Mass
+      observation[7] = 600.0  #NASA Hall _Effect discharge voltage ceiling spec
+
+      #Updates Observation values back into persistent class memory for next step
+      self.state = np.copy(observation)
+
+      #Core Lifecycle Compliance Handshake Tensors
       reward = 0.0
-
-      # Catastrophic Faliured occured
       terminated = False
-      #Clean time horizon expiration at 200 simulation days
       truncated = self.current_steps >= self.max_steps
-      # Empty metadata for tracking Ai pipeline
       info = {}
-      #Handshake of 5 parameters
+      
+
       return observation,reward,terminated,truncated,info
 
 
