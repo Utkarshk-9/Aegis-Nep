@@ -47,5 +47,32 @@ class AegisNepEnv(gym.Env):
    #Storage PipeLine
       info = {}
       return observation, info
+   
+   #Room 3: Engine Loop- Executes in every single simulation day,,
+
+    def step(self, action):
+
+      #Advance the clock by day 1 steps
+      self.current_steps += 1
+
+      #Continuous 3D Actions Output
+      throttle = action[0] #Range [0.0 , 1.0]
+      azimuth = action[1] #Range [-1.0 , 1.0]
+      elevation = action[2] # Range [-1.0, 1.0]
+
+      #[1A, Placehodler] 
+      observation = np.zeros(14, dtype=np.float32)
+
+      #Reward tracking
+      reward = 0.0
+
+      # Catastrophic Faliured occured
+      terminated = False
+      #Clean time horizon expiration at 200 simulation days
+      truncated = self.current_steps >= self.max_steps
+      # Empty metadata for tracking Ai pipeline
+      info = {}
+      #Handshake of 5 parameters
+      return observation,reward,terminated,truncated,info
 
 
