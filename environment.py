@@ -42,7 +42,7 @@ class AegisNepEnv(gym.Env):
       observation[4] = 29780.0 #SpaceCraft Velocity VY (approx.. earth's orbital speed in m/s)
       observation[5] = 0.0 #SpaceCraft Veloctiy VZ
       observation[6] = 12000.0 #Initial SpaceCraft Launch Wet Mass (Kg)
-      observation[7] = 600.0 # Full Starting Ion Grid Operational Potential (Volts)
+      observation[7] = 3500.0 # Full Starting Ion Grid Operational Potential (Volts)
       
    #Storage PipeLine
       info = {}
