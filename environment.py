@@ -41,6 +41,7 @@ class AegisNepEnv(gym.Env):
       observation[5] = 0.0 #SpaceCraft Veloctiy VZ
       observation[6] = 12000.0 #Initial SpaceCraft Launch Wet Mass (Kg)
       observation[7] = 600.0 # NASA Hall-Effect spec
+      self.state = np.copy(observation)
    #Storage PipeLine
       info = {}
       return observation, info
