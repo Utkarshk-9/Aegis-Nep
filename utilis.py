@@ -60,3 +60,37 @@ def rk4_step(state_6d, r_earth, r_mars, thrust_vector, mass, dt_seconds):
     #Run the high-precision weighted average combination sequence to slide the state vector forward
     next_state_6d = state_6d + (dt_seconds/6.0) * (k1 + 2.0*k2 +2.0*k3 +k4)
     return next_state_6d
+
+#Phase 2A: Celestial Ephemeris Tracking Constants
+#Standard Heliocentric Orbital Elements at J2000 Epoch (Position in meters / Radian Clocks)
+#[Semi-Major Axis(a), Eccentricity(e), Orbital Period (Days)]
+EARTH_ORBIT_SPECS = np.array([1.4959787e11, 0.0167080, 365.256363], dtype = np.float32)
+MARS_ORBIT_SPECS = np.array([2.2793993e11, 0.0934, 686.980], dtype=np.float32)
+def get_planetary_ephemeris(current_step_days, planet_flag="Earth"):
+    #Analytical Keplerian Solver: Computes 3D planet positions relative to the Sun Center
+    specs = EARTH_ORBIT_SPECS if planet_flag =="Earth" else MARS_ORBIT_SPECS
+    a = specs[0]  #Semi-Major Axis (Mean distance From Sun core in meters)
+    e = specs[1] # Track Eccenticity (Flatness Profile)
+    period = specs[2]
+
+    #Advance the angular mean clock vector based on current flight day step
+    # Angular Veloctiy (n) = 2 * pi / Period
+    mean_anomaly = (2 * np.pi / period) * current_step_days
+
+    #Vectorized First-Order Analytical Approximation of Kepler's Eccentric Anomaly
+    # E = M + e*sin(M) + (e^2 /2)*sin(2M) High-precision closed-form expansion
+    eccentric_anomaly = mean_anomaly + e * np.sin(mean_anomaly) +(e**2 / 2.0) * np.sin(2.0 * mean_anomaly)
+    
+    #Project cooridnates onto 2D Heliocentric Orbital Plane Slices
+    x_orbital = a * (np.cos(eccentric_anomaly) -e)
+    y_orbital = a * np.sqrt(1.0 - e**2) * np.sin(eccentric_anomaly)
+
+    #Coordinates into  a clean 3D continuous position array matrix [x,y,z]
+    r_planet = np.zeros(3,dtype=np.float32)
+    r_planet[0] = x_orbital
+    r_planet[1] = y_orbital
+    r_planet[2] = 0.0 #Referrance Frame
+
+    return r_planet
+
+
