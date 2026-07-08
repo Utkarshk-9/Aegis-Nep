@@ -63,6 +63,11 @@ class AegisNepEnv(gym.Env):
 
       #Defining active Hall-Effect thruster forces 
       thrust_vector = np.array([throttle, azimuth, elevation], dtype=np.float32)
+      #Moving 3D coordinates vector positions for Earth and Mars
+      #Passing Current simulation step day into analytical keplerian solver
+      r_earth = utilis.get_planetary_ephemeris(self.current_steps,planet_flag="Earth")
+      r_mars = utilis.get_planetary_ephemeris(self.current_steps,planet_flag="Mars")
+      
       #Calling Rk 4 solver from utilis to slide space cooridnates forward 1 Day
       #dt_seconds = 86400.00 (total sec in exactly 1.0 Earth Day Steps)
       next_6d_state = utilis.rk4_step(
@@ -79,6 +84,11 @@ class AegisNepEnv(gym.Env):
       observation[:6] = next_6d_state
       observation[6] = 12000 # Mass
       observation[7] = 600.0  #NASA Hall _Effect discharge voltage ceiling spec
+      
+      #Injecting moving planet position coordinates into relacie observation tracking slots
+      #Live Radar to track Earth and Mars position
+      observation[8:11] = r_earth
+      observation[11:14] = r_mars
 
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
