@@ -16,7 +16,7 @@ class AegisNepEnv(gym.Env):
      self.observation_space = spaces.Box(
         low =-np.inf,
         high = np.inf,
-        shape = (14,),
+        shape = (20,),
         dtype = np.float32
      )
     #Time_Step from Geo Orbit to Mars Interception
@@ -29,7 +29,7 @@ class AegisNepEnv(gym.Env):
 
        #Reset internal time tracking clock back to Day 0.
       self.current_steps = 0
-      observation = np.zeros(14,dtype = np.float32)
+      observation = np.zeros(20,dtype = np.float32)
 
       #J2000 Baseline Coordinates (Earth Orbit Escape Line-up positions)
       observation[0] = 1.496e11 #SpaceCraft Position X
@@ -100,7 +100,7 @@ class AegisNepEnv(gym.Env):
        
 
       #Updating Physics coordinates straight back into observation array
-      observation = np.zeros(14,dtype = np.float32)
+      observation = np.zeros(20,dtype = np.float32)
       observation[:6] = next_6d_state
       observation[6] = next_mass # Mass
       observation[7] = current_voltage  #NASA Hall _Effect discharge voltage ceiling spec
@@ -109,6 +109,14 @@ class AegisNepEnv(gym.Env):
       #Live Radar to track Earth and Mars position
       observation[8:11] = r_earth
       observation[11:14] = r_mars
+
+      #Stochastic Hardware Observation Parameters
+      observation[14] = 1.0  # Grid Heatlh Coefficient (Pristine 1.0 down to Dead 0.0)
+      observation[15] = 0.0 #Cumulative failure Probability Risk (Weibull Scale)
+      observation[16] = 298.15 #PPU Internal Circuit Temperature: T_PPU (Kelvin)
+      observation[17] = 0.0 #Valve Flutter Amplitude
+      observation[18] = 0.0 #Cathode Poisioning Contaminatio Score
+      observation[19] = 0.0 #Core System Operational Fault State (0.0 Nominal)
 
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
