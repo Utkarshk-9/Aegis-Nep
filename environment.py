@@ -21,7 +21,7 @@ class AegisNepEnv(gym.Env):
      )
     #Time_Step from Geo Orbit to Mars Interception
      self.current_steps = 0
-     self.max_steps = 200
+     self.max_steps = 3650
 
    #Room 2
     def reset(self, seed=None, options=None):
@@ -66,7 +66,7 @@ class AegisNepEnv(gym.Env):
       #PHASE 2B: Propulsion and Mass Depletion 
       F_max_newtons = 0.60  #Maximum continuous engine force (Newtons)
       mdot_max_kg_per_sec = 5.02e-5 #Maximum Xenon propellnat consumption(kg/s)
-      dt_seconds = 86400.0  #Total seconds in 1 simulation Earth Day
+      dt_seconds = 8640.0  #High Precision Time Interval (Exactly 0.1 Earth Days)
 
       #Calculating active thrust force magnitude and linear burn depletion
       active_thrust_magnitude = throttle * F_max_newtons
