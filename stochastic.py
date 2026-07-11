@@ -22,15 +22,15 @@ class StochasticFailureEngine:
         #Tracking component degradation across long-duration flight steps
         self.grid_age_steps = 0.0 
         self.damage_accumulation  = 0.0 
-        self.ppu_temp_kelvin = 293.15 #Starts at ambient garage temp (20 degree celcius)
+        self.ppu_temp_kelvin = 293.15 #Starts at ambient garage temp (20 degrees celcius)
         self.grid_health_coef = 1.0 #Pristine Baseline Profile
         self.valve_flutter = 0.0 #Active Fluid Flow instability score (psi)
         self.cathode_poisoning = 0.0 #Active Chemical contamination score(chi)
         self.fault_state = 0 #State 0: Nominal Operation Loop
 
     def evaluate_step_physics(self, throttle_input, current_voltage, dt_seconds=1.0):
-        """ROOM 3 MATH CORE: UPDATING ALL CROSS COUPLED DEGRADATION CHANNELS PER STEP"""
-        #Advace engine component clock
+        """ROOM 3 MATH CORE: UPDATING ALL CROSS-COUPLED DEGRADATION CHANNELS PER STEP"""
+        #Advance engine component clock
         self.grid_age_steps +=1
 
         #Deriving beam current from agent's continuous throttle action
@@ -39,13 +39,13 @@ class StochasticFailureEngine:
         #Thermodyanmic Coupling Engine (RK4 numerial integrator)
         joule_heating_watts = (active_beam_current **2) * r_internal_ohms #(i^2r)
 
-        #Deifing non-linear derivaitve : dT/dt = (Q_in - Q_out) / C
+        #Defining non-linear derivative : dT/dt = (Q_in - Q_out) / C
         def get_temperature_derivative(current_temp):
             #Q_out calculated via Stefan-Boltzmann Law (T^4)
             radiative_cooling_watts = sigma_area * (np.power(current_temp, 4) - np.power(space_temp_k,4))
             return float((joule_heating_watts - radiative_cooling_watts) / thermal_capacitance)
             
-        #Computing RK4 evaluation coeffcients across dt inerval
+        #Computing RK4 evaluation coefficients across dt inerval
         t_curr = self.ppu_temp_kelvin
         k1 = get_temperature_derivative(t_curr)
         k2 = get_temperature_derivative(t_curr + 0.5 * dt_seconds * k1)
@@ -56,7 +56,7 @@ class StochasticFailureEngine:
         self.ppu_temp_kelvin += (dt_seconds / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
         #Ion sputtering and damage accumulation block
-        #Corrected per-second phyics clock to avoid mathematical supression
+        #Corrected per-second physics clock to avoid mathematical suppression
         time_ratio = self.grid_age_steps / weibull_eta_steps
         weibull_hazard = (weibull_beta_shape/ weibull_eta_steps) * (time_ratio ** (weibull_beta_shape - 1.0))
         step_damage = weibull_hazard * (dt_seconds / 86400.0) * (1.0 + throttle_input)
@@ -67,7 +67,7 @@ class StochasticFailureEngine:
         reliability_probability = 1.0 - np.exp(-(time_ratio ** weibull_beta_shape))
 
         #Stochastic Degradation Loops 
-        #Mechanical Xenon Valve Flutter (Sinusodial Fluid Transient Flow Wave)
+        #Mechanical Xenon Valve Flutter (Sinusoidal Fluid Transient Flow Wave)
         if throttle_input > 0.0:
             #Valve flutter scales with throttle magnitude and worsen as grid health decays
             oscillation_wave = np.sin(valve_resonance_omega * self.grid_age_steps)
@@ -76,14 +76,14 @@ class StochasticFailureEngine:
             self.valve_flutter = 0.0
 
         #Chemical Cathode Poisoning Emitter(Exponential Chemical Decay)
-        #Contammination piles up during operational steps over flight hours
+        #Contamination piles up during operational steps over flight hours
         if throttle_input > 0.0:
             contamination_time = self.grid_age_steps * (dt_seconds / 3600.0)
-            throttle_factor = cathode_throttle_scalling + 1.0 * throttle_input
+            throttle_factor = cathode_throttle_scaling + 1.0 * throttle_input
             self.cathode_poisoning = np.float32(1.0 - np.exp(-cathode_poisoning_lambda * contamination_time * throttle_factor))
 
         #Paschen Coupling and Thermal Arc flash event checks
-        #Arc Threshold collapses violenlty as grid wear, valve flutter, and temperature spike
+        #Arc Threshold collapses violently as grid wear, valve flutter, and temperature spike
         cross_coupled_wear = self.grid_health_coef * (1.0 - 0.2 * self.valve_flutter) * (1.0 - 0.3 * self.cathode_poisoning)
         arc_breakdown_threshold_volts = 1000.0 * cross_coupled_wear * (300.0 / self.ppu_temp_kelvin)
         arc_triggered = current_voltage > arc_breakdown_threshold_volts
