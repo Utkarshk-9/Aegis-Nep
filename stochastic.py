@@ -12,7 +12,7 @@ weibull_eta_steps = np.float(36500.0) # Component life rating scale (10x mission
 #Physics Constants
 valve_resonance_omega = np.float32(0.05) #Fluid flow oscillation angular velocity tracking freaquency
 cathode_poisoning_lambda = np.float32(4.0e-5) #Chemical contamination exponential accumulation decay rate
-
+cathode_throttle_scalling = 0.5
 #Deep-Space Therodynamic Upgrades
 sigma_area = np.float32(1.5e-9)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area
 space_temp_k = np.float32(3.0)  # Background temperature of deep space (Kelvin)
@@ -39,6 +39,58 @@ class StochasticFailureEngine:
         #Thermodyanmic Coupling Engine (RK4 numerial integrator)
         joule_heatng_watts = (active_beam_current **2) * r_internal_ohms #(i^2r)
 
-        #Deifing non-linear derivaitve for boltzmann law (T^4)
+        #Deifing non-linear derivaitve : dT/dt = (Q_in - Q_out) / C
         def get_temperature_derivative(current_temp):
+            #Q_out calculated via Stefan-Boltzmann Law (T^4)
+            radiative_cooling_watts = sigma_area * (np.power(current_temp, 4) - np.power(space_temp_k,4))
+            return float((joule_heatng_watts - radiative_cooling_watts) / thermal_capacitance)
             
+            #Computing RK4 evaluation coeffcients across dt inerval
+            t_curr = self.ppu_temp_kelvin
+            k1 = get_temperature_derivative(t_curr)
+            k2 = get_temperature_derivative(t_curr + 0.5 * dt_seconds * k1)
+            k3 = get_temperature_derivative(t_curr + 0.5 * dt_seconds * k2)
+            k4 = get_temperature_derivative(t_curr + 0.5 * dt_seconds * k3)
+
+            #Updating system state by weight average slope of all 4 steps
+            self.ppu_temp_kelvin += (dt_seconds / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+
+            #Ion sputtering and damage accumulation block
+            #Corrected per-second phyics clock to avoid mathematical supression
+            time_ratio = self.grid_age_steps / weibull_eta_shape
+            weibull_hazard = (weibull_beta_shape/ weibull_eta_shape) * (time_ratio ** (weibull_beta_shape - 1.0))
+            step_damage = weibull_hazard * (dt_seconds / 86400.0) * (1.0 + throttle_input)
+            self.damage_accumulation += float(step_damage)
+            self.grid_health_coef = float(np.exp(-self.damage_accumulation))
+
+            #Reliability Probability Calculation (Weibull Cumulative Risk Profile)
+            reliability_probability = 1.0 - np.exp(-(time_ratio ** weibull_beta_shape))
+
+            #Stochastic Degradation Loops 
+            #Mechanical Xenon Valve Flutter (Sinusodial Fluid Transient Flow Wave)
+            if throttle_input > 0.0:
+                #Valve flutter scales with throttle magnitude and worsen as grid health decays
+                oscillation_wave = np.sin(valve_resonance_omega * self.grid_age_steps)
+                self.valve_flutter = float(throttle_input *abs(oscillation_wave) * (1.0 - self.grid_health_coef))
+            else:
+                self.valve_flutter = 0.0
+
+            #Chemical Cathode Poisoning Emitter(Exponential Chemical Decay)
+            #Contammination piles up during operational steps over flight hours
+            if throttle_input > 0.0:
+                contamination_time = self.grid_age_steps * (dt_seconds / 3600.0)
+                throttle_factor = cathode_throttle_scalling + 1.0 * throttle_input
+                self.cathode_poisioning = np.float(1.0 - np.exp(-cathode_poisoning_lambda * contamination_time * throttle_factor))
+
+            #Paschen Coupling and Thermal Arc flash event checks
+            #Arc Threshold collapses violenlty as grid wear, valve flutter, and temperature spike
+            cross_coupled_wear = self.grid_health_coef * (1.0 - 0.2 * self.valve_flutter) * (1.0 - 0.3 self.cathode_poisoning))
+            arc_breakdown_threshold_volts = 1000.0 * cross_coupled_wear * (300.0 / self.ppu_temp_kelvin)
+            arc_triggered = current_voltage > arc_break_down_threshold_volts
+
+            #5-STATE MULTI-PHYSICS HEALTH STATE MACHINE ASSIGNMENTS
+            #Factor in alpha wear, valve flutters, and cathode contamination simultaneously
+            total_degradation = (0.5 * ( 1.0 - self.grid_health_coef)) + (0.3 * self.cathode_poisioning) + (0.2 * self.valve_flutter)
+            
+
+
