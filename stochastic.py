@@ -76,7 +76,7 @@ class StochasticFailureEngine:
                 self.valve_flutter = 0.0
 
             #Chemical Cathode Poisoning Emitter(Exponential Chemical Decay)
-            #Contammination piles up during operational steps over flight hours,
+            #Contammination piles up during operational steps over flight hours
             if throttle_input > 0.0:
                 contamination_time = self.grid_age_steps * (dt_seconds / 3600.0)
                 throttle_factor = cathode_throttle_scalling + 1.0 * throttle_input
