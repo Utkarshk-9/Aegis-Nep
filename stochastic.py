@@ -4,18 +4,21 @@ import numpy as np
 # HARDWARE REFERRENCE PARAMETERS (NASA AEPS CEILING SPECS)
 v_nominal = np.float32(600.0)  #Operating discharge voltage ceiling (Volts)
 i_max_beam_amps = np.float32(25.0)  #Peak Hall-effect bea current threshold (Amps)
-r_internal_ohms = np.float32(0.12)  #InternalPPU Tracking circuit resistance (Ohms)
-thermal_capacitance = np.float32(180.0) #Material mass thermal score (Joule/kelvin)
+r_internal_ohms = np.float32(1.152)  #InternalPPU Tracking circuit resistance (Ohms)
+thermal_capacitance = np.float32(150000.0) #Material mass thermal score (Joule/kelvin)
 weibull_beta_shape = np.float32(2.8) #Material degradation wear acceleration slope
-weibull_eta_steps = np.float32(36500.0) # Component life rating scale (10x mission lifetime)
+weibull_eta_steps = np.float32(1000.0) # Component life rating scale (10x mission lifetime)
 
 #Physics Constants
 valve_resonance_omega = np.float32(0.05) #Fluid flow oscillation angular velocity tracking freaquency
 cathode_poisoning_lambda = np.float32(4.0e-5) #Chemical contamination exponential accumulation decay rate
 cathode_throttle_scaling = 0.5
 #Deep-Space Therodynamic Upgrades
-sigma_area = np.float32(5.67e-8 * 0.85 * 0.015)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area (Evaluates to - 7.23e-10)
+sigma_area = np.float32(5.67e-8 * 0.85 * 40.5 * 0.0004)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area * Bay Insulation Shunt (Evaluates to - 7.23e-10)
 space_temp_k = np.float32(3.0)  # Background temperature of deep space (Kelvin)
+
+#RK4 sub_stepping
+max_stable_substep_sec = 30.0
 
 class StochasticFailureEngine:
     def __init__(self):
@@ -39,25 +42,33 @@ class StochasticFailureEngine:
 
         #Thermodyanmic Coupling Engine (RK4 numerial integrator)
         joule_heating_watts = (active_beam_current **2) * r_internal_ohms #(i^2r)
+        
+        #740W from PPU + 50,000W background heat from nuclear reactor 
+        total_heat_in_watts = joule_heating_watts + 50000.0
 
         #Defining non-linear derivative : dT/dt = (Q_in - Q_out) / C
         def get_temperature_derivative(current_temp):
             #Q_out calculated via Stefan-Boltzmann Law (T^4)
             radiative_cooling_watts = sigma_area * (np.power(current_temp, 4) - np.power(space_temp_k,4))
-            return float((joule_heating_watts - radiative_cooling_watts) / thermal_capacitance)
+            return float((total_heat_in_watts - radiative_cooling_watts) / thermal_capacitance)
             
-        #Computing RK4 evaluation coefficients across dt inerval
-        t_curr = self.ppu_temp_kelvin
-        k1 = get_temperature_derivative(t_curr)
-        k2 = get_temperature_derivative(t_curr + 0.5 * dt_seconds * k1)
-        k3 = get_temperature_derivative(t_curr + 0.5 * dt_seconds * k2)
-        k4 = get_temperature_derivative(t_curr + dt_seconds * k3)
+        #Splitting dr_seconds into small enough  sub_steps for RK4 to say stable
+        n_substep = max(1, int(np.ceil(dt_seconds / max_stable_substep_sec)))
+        sub_dt = dt_seconds / n_substep
+        for _ in range(n_substep):
+         #Splitting dt_seconds into small enough sub_step for RK4 to stay stable
+         #Computing RK4 evaluation coefficients across dt inerval
+         t_curr = self.ppu_temp_kelvin
+         k1 = get_temperature_derivative(t_curr)
+         k2 = get_temperature_derivative(t_curr + 0.5 * sub_dt * k1)
+         k3 = get_temperature_derivative(t_curr + 0.5 * sub_dt * k2)
+         k4 = get_temperature_derivative(t_curr + sub_dt * k3)
 
         #Updating system state by weight average slope of all 4 steps
-        self.ppu_temp_kelvin += (dt_seconds / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+         self.ppu_temp_kelvin += (sub_dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
         #Weibull accumulation (matching frequency)
-        weibull_eta_seconds = weibull_eta_steps *86400.0
+        weibull_eta_seconds = weibull_eta_steps * 86400.0
         time_ratio = self.cumulative_flight_seconds / weibull_eta_seconds
 
         #Calculating instantaneous hazard rate based on time elapsed
