@@ -66,7 +66,7 @@ class AegisNepEnv(gym.Env):
       #PHASE 2B: Propulsion and Mass Depletion 
       F_max_newtons = 0.60  #Maximum continuous engine force (Newtons)
       mdot_max_kg_per_sec = 5.02e-5 #Maximum Xenon propellnat consumption(kg/s)
-      dt_seconds = 8640.0  #High Precision Time Interval (Exactly 0.1 Earth Days)
+      dt_seconds = 86400.0  #High Precision Time Interval (Exactly 0.1 Earth Days)
 
       #Calculating active thrust force magnitude and linear burn depletion
       active_thrust_magnitude = throttle * F_max_newtons
