@@ -14,7 +14,7 @@ valve_resonance_omega = np.float32(0.05) #Fluid flow oscillation angular velocit
 cathode_poisoning_lambda = np.float32(4.0e-5) #Chemical contamination exponential accumulation decay rate
 cathode_throttle_scaling = 0.5
 #Deep-Space Therodynamic Upgrades
-sigma_area = np.float32(1.5e-9)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area
+sigma_area = np.float32(5.67e-8 * 0.85 * 0.015)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area (Evaluates to - 7.23e-10)
 space_temp_k = np.float32(3.0)  # Background temperature of deep space (Kelvin)
 
 class StochasticFailureEngine:
@@ -71,7 +71,7 @@ class StochasticFailureEngine:
         self.grid_health_coef = float(np.exp(-self.damage_accumulation))
 
         #Reliability Probability Calculation (Weibull Cumulative Risk Profile)
-        reliability_probability = 1.0 - np.exp(-(time_ratio ** weibull_beta_shape))
+        reliability_probability = 1.0 - np.exp(-(time_ratio ** weibull_beta_shape)) if time_ratio >= 0.0 else 0.0
 
         #Stochastic Degradation Loops 
         #Mechanical Xenon Valve Flutter (Sinusoidal Fluid Transient Flow Wave)
@@ -87,7 +87,7 @@ class StochasticFailureEngine:
         if throttle_input > 0.0:
             contamination_time = self.cumulative_flight_seconds / 3600.0
             throttle_factor = cathode_throttle_scaling + 1.0 * throttle_input
-            self.cathode_poisoning = np.float32(1.0 - np.exp(-cathode_poisoning_lambda * contamination_time * throttle_factor))
+            self.cathode_poisoning = float(1.0 - np.exp(-cathode_poisoning_lambda * contamination_time * throttle_factor))
 
         #Paschen Coupling and Thermal Arc flash event checks
         #Arc Threshold collapses violently as grid wear, valve flutter, and temperature spike
