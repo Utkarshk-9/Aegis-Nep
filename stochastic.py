@@ -43,8 +43,8 @@ class StochasticFailureEngine:
         #Thermodyanmic Coupling Engine (RK4 numerial integrator)
         joule_heating_watts = (active_beam_current **2) * r_internal_ohms #(i^2r)
         
-        #740W from PPU + 50,000W background heat from nuclear reactor 
-        total_heat_in_watts = joule_heating_watts + 50000.0
+        #30KW is fixed for housekeeping/bay leak + upto 40Kw for full throttle 
+        total_heat_in_watts = joule_heating_watts + 30000.0 + 40000.0 * throttle_input
 
         #Defining non-linear derivative : dT/dt = (Q_in - Q_out) / C
         def get_temperature_derivative(current_temp):
