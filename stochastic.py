@@ -14,7 +14,7 @@ valve_resonance_omega = np.float32(0.05) #Fluid flow oscillation angular velocit
 cathode_poisoning_lambda = np.float32(4.0e-5) #Chemical contamination exponential accumulation decay rate
 cathode_throttle_scaling = 0.5
 #Deep-Space Therodynamic Upgrades
-sigma_area = np.float32(5.67e-8 * 0.85 * 40.5 * 0.0004)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area * Bay Insulation Shunt (Evaluates to - 7.23e-10)
+sigma_area = np.float32(5.67e-8 * 0.85 * 40.5)  #Commbined Emissivity * Stefan-Boltzman * Radiator Area
 space_temp_k = np.float32(3.0)  # Background temperature of deep space (Kelvin)
 
 #RK4 sub_stepping
