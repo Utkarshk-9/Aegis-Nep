@@ -1,10 +1,14 @@
 import utilis
+from stochastic import StochasticFailureEngine 
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
 class AegisNepEnv(gym.Env):
     def __init__(self):
+     
+     self.engine = StochasticFailureEngine()
+
      super().__init__()
      #Room1: Continuous Action Gimbals [Throttle%, Azimuth, Elevation]
      self.action_space = spaces.Box(
@@ -26,6 +30,7 @@ class AegisNepEnv(gym.Env):
    #Room 2
     def reset(self, seed=None, options=None):
       super().reset(seed = seed)
+      self.engine = StochasticFailureEngine
 
        #Reset internal time tracking clock back to Day 0.
       self.current_steps = 0
@@ -61,12 +66,12 @@ class AegisNepEnv(gym.Env):
       #For now slicing the first 6 elements of observation tracking matrix
       current_state_6d = self.state[:6]
       current_mass = self.state[6] #Live Tracking Mass Coordinates (Initially 12000kg)
-      current_voltage = self.state[7] #Live Tracking Discharge Potential (initially 600V)
+      update_voltage = self.state[7] #Live Tracking Discharge Potential (initially 600V)
 
       #PHASE 2B: Propulsion and Mass Depletion 
       F_max_newtons = 0.60  #Maximum continuous engine force (Newtons)
       mdot_max_kg_per_sec = 5.02e-5 #Maximum Xenon propellnat consumption(kg/s)
-      dt_seconds = 86400.0  #High Precision Time Interval (Exactly 0.1 Earth Days)
+      dt_seconds = 86400.0  #High Precision Time Interval (Exactly 1.0 Earth Days)
 
       #Calculating active thrust force magnitude and linear burn depletion
       active_thrust_magnitude = throttle * F_max_newtons
@@ -103,7 +108,17 @@ class AegisNepEnv(gym.Env):
       observation = np.zeros(20,dtype = np.float32)
       observation[:6] = next_6d_state
       observation[6] = next_mass # Mass
-      observation[7] = current_voltage  #NASA Hall _Effect discharge voltage ceiling spec
+
+      #Bus Noisy  Voltage
+      command_voltage = 600.0 + self.np_random.normal(0,9)
+      if self.np_random.random() < 0.0004:
+        command_voltage *= 1.15
+        
+      #Physics Engine
+      grid_healt, reliability_probability, ppu_temp, valve_flutter, cathode_poisoning, update_voltage, fault_state =\
+      self.engine.evaluate_step_physics(throttle, command_voltage, dt_seconds=dt_seconds)
+
+      observation[7] = update_voltage #Engines real output
       
       #Injecting moving planet position coordinates into relacie observation tracking slots
       #Live Radar to track Earth and Mars position
@@ -111,12 +126,12 @@ class AegisNepEnv(gym.Env):
       observation[11:14] = r_mars
 
       #Stochastic Hardware Observation Parameters
-      observation[14] = 1.0  # Grid Heatlh Coefficient (Pristine 1.0 down to Dead 0.0)
-      observation[15] = 0.0 #Cumulative failure Probability Risk (Weibull Scale)
-      observation[16] = 298.15 #PPU Internal Circuit Temperature: T_PPU (Kelvin)
-      observation[17] = 0.0 #Valve Flutter Amplitude
-      observation[18] = 0.0 #Cathode Poisioning Contaminatio Score
-      observation[19] = 0.0 #Core System Operational Fault State (0.0 Nominal)
+      observation[14] = grid_healt  # Grid Heatlh Coefficient (Pristine 1.0 down to Dead 0.0)
+      observation[15] = reliability_probability #Cumulative failure Probability Risk (Weibull Scale)
+      observation[16] = ppu_temp #PPU Internal Circuit Temperature: T_PPU (Kelvin)
+      observation[17] = valve_flutter #Valve Flutter Amplitude
+      observation[18] = cathode_poisoning #Cathode Poisioning Contaminatio Score
+      observation[19] = float(fault_state) #Core System Operational Fault State (0.0 Nominal)
 
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
@@ -124,7 +139,7 @@ class AegisNepEnv(gym.Env):
       #Core Lifecycle Compliance Handshake Tensors
       reward = 0.0
       #Terminal flag catches complete propellant starvationn structural faliures
-      terminated = next_mass <= 7000.0
+      terminated = next_mass <= 7000.0 or self.engine.fault_state == 4 
       truncated = self.current_steps >= self.max_steps
       info = {}
       
