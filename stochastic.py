@@ -7,7 +7,7 @@ i_max_beam_amps = np.float32(25.0)  #Peak Hall-effect bea current threshold (Amp
 r_internal_ohms = np.float32(1.152)  #InternalPPU Tracking circuit resistance (Ohms)
 thermal_capacitance = np.float32(150000.0) #Material mass thermal score (Joule/kelvin)
 weibull_beta_shape = np.float32(2.8) #Material degradation wear acceleration slope
-weibull_eta_steps = np.float32(1000.0) # Component life rating scale (10x mission lifetime)
+weibull_eta_steps = np.float32(1000.0) # Component life rating scale (10x mission lifetime,)
 
 #Physics Constants
 valve_resonance_omega = np.float32(0.05) #Fluid flow oscillation angular velocity tracking freaquency
@@ -30,6 +30,7 @@ class StochasticFailureEngine:
         self.grid_health_coef = 1.0 #Pristine Baseline Profile
         self.valve_flutter = 0.0 #Active Fluid Flow instability score (psi)
         self.cathode_poisoning = 0.0 #Active Chemical contamination score(chi)
+        self.cathode_exposure_accum = 0.0
         self.fault_state = 0 #State 0: Nominal Operation Loop
 
     def evaluate_step_physics(self, throttle_input, current_voltage, dt_seconds=1.0):
@@ -96,9 +97,9 @@ class StochasticFailureEngine:
         #Chemical Cathode Poisoning Emitter(Exponential Chemical Decay)
         #Contamination piles up during operational steps over flight hours
         if throttle_input > 0.0:
-            contamination_time = self.cumulative_flight_seconds / 3600.0
             throttle_factor = cathode_throttle_scaling + 1.0 * throttle_input
-            self.cathode_poisoning = float(1.0 - np.exp(-cathode_poisoning_lambda * contamination_time * throttle_factor))
+            self.cathode_exposure_accum += throttle_factor * (dt_seconds / 3600.0)
+        self.cathode_poisoning = float(1.0 - np.exp(-cathode_poisoning_lambda * self.cathode_exposure_accum))
 
         #Paschen Coupling and Thermal Arc flash event checks
         #Arc Threshold collapses violently as grid wear, valve flutter, and temperature spike
