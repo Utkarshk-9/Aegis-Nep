@@ -16,7 +16,7 @@ class AegisNepEnv(gym.Env):
         high = np.array ([1.0,1.0,1.0]),
         dtype = np.float32
      )
-     # Room1: 14-D Telemetry Output
+     # Room1: 20D Telemetry Output
      self.observation_space = spaces.Box(
         low =-np.inf,
         high = np.inf,
@@ -25,12 +25,12 @@ class AegisNepEnv(gym.Env):
      )
     #Time_Step from Geo Orbit to Mars Interception
      self.current_steps = 0
-     self.max_steps = 3650
+     self.max_steps = 400
 
    #Room 2
     def reset(self, seed=None, options=None):
       super().reset(seed = seed)
-      self.engine = StochasticFailureEngine
+      self.engine = StochasticFailureEngine()
 
        #Reset internal time tracking clock back to Day 0.
       self.current_steps = 0
@@ -46,6 +46,13 @@ class AegisNepEnv(gym.Env):
       observation[5] = 0.0 #SpaceCraft Veloctiy VZ
       observation[6] = 12000.0 #Initial SpaceCraft Launch Wet Mass (Kg)
       observation[7] = 600.0 # NASA Hall-Effect spec
+
+      #Initializing planet tracking positions at day Zero(FIX) 
+      r_earth_init = utilis.get_planetary_ephemeris(0.0, planet_flag="Earth")
+      r_mars_init = utilis.get_planetary_ephemeris(0.0 , planet_flag="Mars")
+      observation[8:11] = r_earth_init
+      observation[11:14] = r_mars_init
+      
       self.state = np.copy(observation)
    #Storage PipeLine
       info = {}
