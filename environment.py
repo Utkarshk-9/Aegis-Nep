@@ -52,7 +52,14 @@ class AegisNepEnv(gym.Env):
       r_mars_init = utilis.get_planetary_ephemeris(0.0 , planet_flag="Mars")
       observation[8:11] = r_earth_init
       observation[11:14] = r_mars_init
-      
+
+      #Initializing System Health(PRISTINE STATES)
+      observation[14] = 1.0    #Grid Health (aplha)
+      observation[15] = 0.0    #Cumulative Faliure Probability (Risk Percentage)
+      observation[16] = 293.15 #PPU Internal Temperature Starts At Room temperature (Kelvin)
+      observation[17] = 0.0    #Valve Flutter Mechanical Chattering Amplitude 
+      observation[18] = 0.0    #Cathode Poisioning (Chemical Crust Score)
+      observation[19] = 0.0    #Core System Operational Fault State Log
       self.state = np.copy(observation)
    #Storage PipeLine
       info = {}
