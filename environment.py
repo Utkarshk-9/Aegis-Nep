@@ -39,6 +39,7 @@ class AegisNepEnv(gym.Env):
 
        #Reset internal time tracking clock back to Day 0.
       self.current_steps = 0
+      self.cumulative_flight_sec = 0.0
       observation = np.zeros(20,dtype = np.float32)
 
       #J2000 Baseline Coordinates (Earth Orbit Escape Line-up positions)
