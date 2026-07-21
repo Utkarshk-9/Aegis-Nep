@@ -4,6 +4,11 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
+#J2000 Solar Epoch Clibration Constants
+#Standard tie conversion factors: Seconds in 1 Julian Year = 31557600.0
+#Setting Launch Window Offset (26 years after J2000 baseline)
+launch_epoch_offset_sec = np.float32(26.0 * 31557600.0)
+
 class AegisNepEnv(gym.Env):
     def __init__(self):
      
@@ -47,9 +52,9 @@ class AegisNepEnv(gym.Env):
       observation[6] = 12000.0 #Initial SpaceCraft Launch Wet Mass (Kg)
       observation[7] = 600.0 # NASA Hall-Effect spec
 
-      #Initializing planet tracking positions at day Zero(FIX) 
-      r_earth_init = utilis.get_planetary_ephemeris(0.0, planet_flag="Earth")
-      r_mars_init = utilis.get_planetary_ephemeris(0.0 , planet_flag="Mars")
+      #Initializing planet tracking positions at day Zero(FIX) passing through launch offset parameter
+      r_earth_init = utilis.get_planetary_ephemeris(launch_epoch_offset_sec, planet_flag="Earth")
+      r_mars_init = utilis.get_planetary_ephemeris(launch_epoch_offset_sec , planet_flag="Mars")
       observation[8:11] = r_earth_init
       observation[11:14] = r_mars_init
 
