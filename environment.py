@@ -168,6 +168,9 @@ class AegisNepEnv(gym.Env):
       cross_product = np.cross(r_earth, spacecraft_position)
       perpendicular_solar_clearance_distance = np.linalg.norm(cross_product) / dist_earth_to_ship
 
+      #Verifing solar conjunction coordinates for sun
+      is_behind_sun = np.dot(r_earth, spacecraft_position) < 0.0 
+
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
 
