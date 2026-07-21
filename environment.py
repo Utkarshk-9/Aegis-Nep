@@ -159,6 +159,11 @@ class AegisNepEnv(gym.Env):
       observation[18] = cathode_poisoning #Cathode Poisioning Contaminatio Score
       observation[19] = float(fault_state) #Core System Operational Fault State (0.0 Nominal)
 
+      
+      #Updates Observation values back into persistent class memory for next step
+      #This is what simulator keeps using internally. No subsyste will touch real physics
+      self.state = np.copy(observation)
+
       #Initializing Heliocentric Solar Conjunction 
       spacecraft_position = next_6d_state[:3]
       relative_position_earth_to_sc = spacecraft_position - r_earth
@@ -176,8 +181,6 @@ class AegisNepEnv(gym.Env):
         observation[:6] = 0.0 # SpaceCraft Position and velocity vecotors
         observation[8:14] = 0.0 #Earth and Mars planetary location 
 
-      #Updates Observation values back into persistent class memory for next step
-      self.state = np.copy(observation)
 
       #Core Lifecycle Compliance Handshake Tensors
       reward = 0.0
