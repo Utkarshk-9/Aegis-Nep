@@ -46,7 +46,6 @@ class AegisNepEnv(gym.Env):
       observation[0] = 1.496e11 #SpaceCraft Position X
       observation[1] = 0.0 #SpaceCraft Position Y
       observation[2] = 0.0 #SpaceCraft Positon Z
-
       observation[3] = 0.0 #SpaceCraft Velocity VX
       observation[4] = 29780.0 #SpaceCraft Velocity VY (approx.. earth's orbital speed in m/s)
       observation[5] = 0.0 #SpaceCraft Veloctiy VZ
@@ -76,6 +75,10 @@ class AegisNepEnv(gym.Env):
     def step(self, action):
       #Advance the clock by day 1 steps
       self.current_steps += 1
+
+      #Defining Time Delta Constraints
+      dt_seconds = 86400.0 
+      self.cumulative_flight_sec += dt_seconds
 
       #Continuous 3D Actions Output
       throttle = action[0] #Range [0.0 , 1.0]
