@@ -168,8 +168,13 @@ class AegisNepEnv(gym.Env):
       cross_product = np.cross(r_earth, spacecraft_position)
       perpendicular_solar_clearance_distance = np.linalg.norm(cross_product) / dist_earth_to_ship
 
-      #Verifing solar conjunction coordinates for sun
+      #Verifing solar conjunction coordinates(Must be Opposite 180*)
       is_behind_sun = np.dot(r_earth, spacecraft_position) < 0.0 
+
+      if is_behind_sun and (perpendicular_solar_clearance_distance < 5.0e9):
+        #Under Solar Conjunction, setting all external spatial vectors to 0
+        observation[:6] = 0.0 # SpaceCraft Position and velocity vecotors
+        observation[8:14] = 0.0 #Earth and Mars planetary location 
 
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
