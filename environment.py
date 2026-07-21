@@ -164,6 +164,10 @@ class AegisNepEnv(gym.Env):
       relative_position_earth_to_sc = spacecraft_position - r_earth
       dist_earth_to_ship = np.linalg.norm(relative_position_earth_to_sc)
 
+      #Calculating Cross Prodcut (Maps perendicular distance of radio signals from sun's corona)
+      cross_product = np.cross(r_earth, spacecraft_position)
+      perpendicular_solar_clearance_distance = np.linalg.norm(cross_product) / dist_earth_to_ship
+
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
 
