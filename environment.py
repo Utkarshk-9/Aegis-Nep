@@ -80,6 +80,9 @@ class AegisNepEnv(gym.Env):
       dt_seconds = 86400.0 
       self.cumulative_flight_sec += dt_seconds
 
+      #Calculating absolute ephemeris time-position for Keplerian solvers
+      acive_ephemeris_time = launch_epoch_offset_sec + self.cumulative_flight_sec
+
       #Continuous 3D Actions Output
       throttle = action[0] #Range [0.0 , 1.0]
       azimuth = action[1] #Range [-1.0 , 1.0]
@@ -155,6 +158,11 @@ class AegisNepEnv(gym.Env):
       observation[17] = valve_flutter #Valve Flutter Amplitude
       observation[18] = cathode_poisoning #Cathode Poisioning Contaminatio Score
       observation[19] = float(fault_state) #Core System Operational Fault State (0.0 Nominal)
+
+      #Initializing Heliocentric Solar Conjunction 
+      spacecraft_position = next_6d_state[:3]
+      relative_position_earth_to_sc = spacecraft_position - r_earth
+      dist_earth_to_ship = np.linalg.norm(relative_position_earth_to_sc)
 
       #Updates Observation values back into persistent class memory for next step
       self.state = np.copy(observation)
