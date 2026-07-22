@@ -116,8 +116,8 @@ class AegisNepEnv(gym.Env):
       
       #Moving 3D coordinates vector positions for Earth and Mars
       #Passing Current simulation step day into analytical keplerian solver
-      r_earth = utilis.get_planetary_ephemeris(self.current_steps,planet_flag="Earth")
-      r_mars = utilis.get_planetary_ephemeris(self.current_steps,planet_flag="Mars")
+      r_earth = utilis.get_planetary_ephemeris(acive_ephemeris_time,planet_flag="Earth")
+      r_mars = utilis.get_planetary_ephemeris(acive_ephemeris_time,planet_flag="Mars")
       
       #Calling Rk 4 solver from utilis to slide space cooridnates forward 1 Day
       #dt_seconds = 86400.00 (total sec in exactly 1.0 Earth Day Steps)
@@ -161,7 +161,7 @@ class AegisNepEnv(gym.Env):
 
       
       #Updates Observation values back into persistent class memory for next step
-      #This is what simulator keeps using internally. No subsyste will touch real physics
+      #This is what simulator keeps using internally. No subsystem will touch real physics.
       self.state = np.copy(observation)
 
       #Initializing Heliocentric Solar Conjunction 
@@ -176,6 +176,9 @@ class AegisNepEnv(gym.Env):
       #Verifing solar conjunction coordinates(Must be Opposite 180*)
       is_behind_sun = np.dot(r_earth, spacecraft_position) < 0.0 
 
+      #This will get handed to the agent. Starts as the copy of the real state
+      #Only this copy gets balcked out.
+      agent_observation = np.copy(observation)
       if is_behind_sun and (perpendicular_solar_clearance_distance < 5.0e9):
         #Under Solar Conjunction, setting all external spatial vectors to 0
         observation[:6] = 0.0 # SpaceCraft Position and velocity vecotors
@@ -190,6 +193,6 @@ class AegisNepEnv(gym.Env):
       info = {}
       
 
-      return observation,reward,terminated,truncated,info
+      return agent_observation,reward,terminated,truncated,info
 
 
